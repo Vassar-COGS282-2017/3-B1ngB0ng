@@ -3,7 +3,7 @@ rows <- 50
 cols <- 50
 proportion.group.1 <- .5 # proportion of red agents
 empty <- .2 # proportion of grid that will be empty space
-min.similarity <- 3/8 # minimum proportion of neighbors that are the same type to not move
+min.similarity <- 5/8 # minimum proportion of neighbors that are the same type to not move
 
 # create.grid ####
 # generates a rows x column matrix and randomly places the initial population
@@ -96,7 +96,25 @@ unhappy.agents <- function(grid, min.similarity){
 # assigned to a new empty location. a new grid is generated to reflect all of
 # the moves that took place.
 one.round <- function(grid, min.similarity){
-  
+  #find all the empty spaces
+  empty.spaces <- empty.locations(grid)
+  #find all the unhappy agents
+  unhappy <- unhappy.agents(grid, min.similarity)
+  #shuffle empty spaces to create random assignement
+  empty.spaces <- empty.spaces[sample(1:nrow(empty.spaces)), ]
+  #go through the empty spaces list and assign an agent to each
+  for(i in 1:nrow(empty.spaces)) {
+    #if we run out of unhappy dudes we wanna end the for loop then
+    if(i > nrow(unhappy)){
+      break;
+    }
+    #make the switch by copying an unhappy index from grid to the corresponding
+    #index in empty spaces. 
+    grid[empty.spaces[i, 1], empty.spaces[i,2]] <- grid[unhappy[i,1], unhappy[i,2]]
+    #
+    grid[unhappy[i,1], unhappy[i,2]] <- 0
+  }
+  return(grid)
 }
 
 # running the simulation ####
@@ -112,6 +130,6 @@ while(!done){
     grid <- new.grid # otherwise, replace grid with new.grid, and loop again.
   }
 }
-layout(1:2) # change graphics device to have two plots
+layout(1) # change graphics device to have two plots
 visualize.grid(grid) # show resulting grid
 plot(seg.tracker) # plot segregation over time
