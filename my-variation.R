@@ -1,12 +1,13 @@
 # model parameters ####
 rows <- 50 
 cols <- 50
-dist <- function(x) {
-  return(x)
+property.dist <- function(x) {
+  return(x^(0.8))
 }
+
 proportion.group.1 <- .5 # proportion of red agents
 empty <- .2 # proportion of grid that will be empty space
-min.similarity <- 5/8 # minimum proportion of neighbors that are the same type to not move
+min.similarity <- 3/8 # minimum proportion of neighbors that are the same type to not move
 
 # create.grid ####
 # generates a rows x column matrix and randomly places the initial population
@@ -78,6 +79,7 @@ segregation <- function(grid){
 # current location. the output is N x 2, with N equal to the
 # number of unhappy agents and the columns representing the 
 # location (row, col) of the unhappy agent in the grid
+
 unhappy.agents <- function(grid, min.similarity){
   grid.copy <- grid
   for(row in 1:rows){
@@ -94,29 +96,52 @@ unhappy.agents <- function(grid, min.similarity){
 }
 
 # Assign property cost
-property.cost <- function(center, current.index, dist) {
+assign.property.cost <- function(rows, cols, current.index, dist) {
   #calculate the center
+  center <- c((rows%/%2),(cols%/%2))
+  
   rowDif <- abs((center[1] - current.index[1]))
   colDif <- abs((center[2] - current.index[2]))
-  totalDif <- rowDif + colDif
+  unscalledDif <- rowDif + colDif
+  scalledDif <- 1- (dist(unscalledDif)/(dist(cols)))
   #return function of the total difference
-  return(dist(totalDif))
+  return(scalledDif)
 }
   
 #Create property matrix
 create.property.matrix <- function(rows, cols) {
   #initialize the property grid
   property.grid <<- matrix(nrow=rows, ncol=cols)
-  #calculate the center
-  center <- c((rows%/%2),(cols%/%2))
+  #mutate it
   for(i in 1:rows) {
     for(j in 1:cols) {
-      property.grid[i,j] <<- property.cost(center, c(i,j), dist)
+      property.grid[i,j] <<- assign.property.cost(rows, cols, c(i,j), property.dist)
     }
   }
 }
 
 
+
+#Create a function to assign the disposable income 
+assign.wealth <- function(distgrp1, distgrp2, type) {
+  if(type==0){return(0)} 
+  if(type==1){return(distgrp1)}
+  if(type==2){return(distgrp2)}
+  totalDif <- rowDif + colDif
+}
+ 
+
+#Create income matrix
+create.income.matrix <- function(distgrp1, distgrp2, matrix) {
+  #initialize the wealth grid
+  wealth.grid <<- matrix
+  #calculate the center
+  for(i in 1:rows) {
+    for(j in 1:cols) {
+    wealth.grid[i,j] <<- assign.wealth(distgrp1, distgrp2, matrix[i,j])
+    }
+  }
+}
 
 # one.round ####
 # runs a single round of the simulation. the round starts by finding
@@ -139,8 +164,10 @@ one.round <- function(grid, min.similarity){
     #make the switch by copying an unhappy index from grid to the corresponding
     #index in empty spaces. 
     grid[empty.spaces[i, 1], empty.spaces[i,2]] <- grid[unhappy[i,1], unhappy[i,2]]
+    wealth.grid[empty.spaces[i, 1], empty.spaces[i,2]] <<- wealth.grid[unhappy[i,1], unhappy[i,2]]
     #
     grid[unhappy[i,1], unhappy[i,2]] <- 0
+    wealth.grid[unhappy[i,1], unhappy[i,2]] <<- 0
   }
   return(grid)
 }
@@ -149,6 +176,10 @@ one.round <- function(grid, min.similarity){
 done <- FALSE # a variable to keep track of whether the simulation is complete
 grid <- create.grid(rows, cols, proportion.group.1, empty)
 seg.tracker <- c(segregation(grid)) # keeping a running tally of the segregation scores for each round
+create.property.matrix(rows, cols)
+create.income.matrix(rnorm(1,0,1), rnorm(1,0,1), grid)
+
+
 while(!done){
   new.grid <- one.round(grid, min.similarity) # run one round of the simulation, and store output in new.grid
   seg.tracker <- c(seg.tracker, segregation(grid)) # calculate segregation score and add to running list
