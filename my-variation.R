@@ -2,12 +2,15 @@
 rows <- 50 
 cols <- 50
 property.dist <- function(x) {
-  return(x^(0.8))
+  return(x^(0.6))
 }
 
 proportion.group.1 <- .5 # proportion of red agents
 empty <- .2 # proportion of grid that will be empty space
-min.similarity <- 3/8 # minimum proportion of neighbors that are the same type to not move
+min.similarity <- 1/8 # minimum proportion of neighbors that are the same type to not move
+
+distgrp1 <- quote(rbeta(1, 2, 3)+0.2)
+distgrp2 <- quote(rbeta(1, 3, 2)+0.2)
 
 # create.grid ####
 # generates a rows x column matrix and randomly places the initial population
@@ -73,6 +76,12 @@ segregation <- function(grid){
   return(same.count / (same.count + diff.count))
 }
 
+
+# match.means ####
+match.means <- function(row, col) {
+  return((property.grid[row,col] + 0.1 < wealth.grid[row,col])&(wealth.grid[row,col] < property.grid[row,col] + 0.6))
+}
+
 # unhappy.agents ####
 # takes a grid and a minimum similarity threshold and computes
 # a list of all of the agents that are unhappy with their 
@@ -88,7 +97,7 @@ unhappy.agents <- function(grid, min.similarity){
       if(is.na(similarity.score)){
         grid.copy[row,col] <- NA
       } else {
-        grid.copy[row,col] <- similarity.score >= min.similarity
+        grid.copy[row,col] <- similarity.score >= min.similarity & match.means(row,col)
       }
     }
   }
@@ -127,18 +136,16 @@ assign.wealth <- function(distgrp1, distgrp2, type) {
   if(type==0){return(0)} 
   if(type==1){return(distgrp1)}
   if(type==2){return(distgrp2)}
-  totalDif <- rowDif + colDif
 }
- 
+
 
 #Create income matrix
 create.income.matrix <- function(distgrp1, distgrp2, matrix) {
   #initialize the wealth grid
   wealth.grid <<- matrix
-  #calculate the center
   for(i in 1:rows) {
     for(j in 1:cols) {
-    wealth.grid[i,j] <<- assign.wealth(distgrp1, distgrp2, matrix[i,j])
+    wealth.grid[i,j] <<- assign.wealth(eval(distgrp1), eval(distgrp2), matrix[i,j])
     }
   }
 }
@@ -177,7 +184,7 @@ done <- FALSE # a variable to keep track of whether the simulation is complete
 grid <- create.grid(rows, cols, proportion.group.1, empty)
 seg.tracker <- c(segregation(grid)) # keeping a running tally of the segregation scores for each round
 create.property.matrix(rows, cols)
-create.income.matrix(rnorm(1,0,1), rnorm(1,0,1), grid)
+create.income.matrix(distgrp1, distgrp2, grid)
 
 
 while(!done){
@@ -192,3 +199,5 @@ while(!done){
 layout(1) # change graphics device to have two plots
 visualize.grid(grid) # show resulting grid
 plot(seg.tracker) # plot segregation over time
+
+
